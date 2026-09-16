@@ -24,7 +24,7 @@ start: jmp main
 
 bpbOEM                  DB "AeroX"      ;   8-byte OEM identifier
 bpbBytesPerSector       DW 512          ;   bytes per sector (512)
-bpbSectorsPerCluster    DB 1            ;   sectors per allocation unit
+bpbSectorsPerCluster    DB 1            ;   sectors per allocation unit (also known as clusters!)
 bpbReservedSectors      DW 1            ;   includes boot sector
 bpbNumberofFATs         DB 2            ;   number of fat copies
 bpbRootEntries          DW 224          ;   max root directory entries
@@ -57,9 +57,11 @@ absoluteHead    db 0x00
 absoluteTrack   db 0x00
 
 cluster_lba:
-    sub ax, 0x0002
-    xor cx, cx
-    mov cl, BYTE [bpbSectorsPerCluster]
-    mul cx
-    add ax, word [datasector]
+    sub ax, 0x0002                          ;   clusters start at 2 (0 and 1 are reserved)
+                                            ;   sub 2 to make it 0 (which is the start of the data area)
+    xor cx, cx                              ;   exclusive or on self sets to 0
+    mov cl, BYTE [bpbSectorsPerCluster]     ;   find out how many sectors there are in a single cluster
+    mul cx                                  ;   in 16-bit, mul targets AX, so this would be AX * CX
+                                            ;   (e.g. if cluster was 2, AX was 2, now 0 * sectors = 0 offset)
+    add ax, word [datasector]               ;   add the global data area offset to get the absolute sector
     ret
