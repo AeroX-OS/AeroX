@@ -22,25 +22,25 @@
 
 start: jmp main
 
-bpbOEM                  DB "AeroX"
-bpbBytesPerSector       DW 512
-bpbSectorsPerCluster    DB 1
-bpbReservedSectors      DW 1
-bpbNumberofFATs         DB 2
-bpbRootEntries          DW 224
-bpbTotalSectors         DW 2880
-bpbMedia                DB 0xF0
-bpbSectorsPerFAT        DW 9
-bpbSectorsPerTrack      DW 18
-bpbHeadsPerCylinder     DW 2
-bpbHiddenSectors        DD 0
-bpbTotalSectorsBig      DD 0
-bsDriveNumber           DB 0
-bsUnused                DB 0
-bsExtBootSignature      DB 0x29
-bsSerialNumber          DD 0x00000000
-bsVolumeLabel           DB "AeroX"
-bsFileSystem            DB "FAT12"
+bpbOEM                  DB "AeroX"      ;   8-byte OEM identifier
+bpbBytesPerSector       DW 512          ;   bytes per sector (512)
+bpbSectorsPerCluster    DB 1            ;   sectors per allocation unit
+bpbReservedSectors      DW 1            ;   includes boot sector
+bpbNumberofFATs         DB 2            ;   number of fat copies
+bpbRootEntries          DW 224          ;   max root directory entries
+bpbTotalSectors         DW 2880         ;   total sectors on disk
+bpbMedia                DB 0xF0         ;   media desciptor (0xF0 means removable)
+bpbSectorsPerFAT        DW 9            ;   sectors per fat table
+bpbSectorsPerTrack      DW 18           ;   sectors per track
+bpbHeadsPerCylinder     DW 2            ;   number of heads
+bpbHiddenSectors        DD 0            ;   no hidden sectors
+bpbTotalSectorsBig      DD 0            ;   no large sectors
+bsDriveNumber           DB 0            ;   0 = auto drive number association
+bsUnused                DB 0            ;   reserved
+bsExtBootSignature      DB 0x29         ;   extended boot signature
+bsSerialNumber          DD 0x00000000   ;   volume serial number
+bsVolumeLabel           DB "AeroX     " ;   11 byte volume name
+bsFileSystem            DB "FAT12  "    ;   8 byte filesystem type
 
 print:
     lodsb
@@ -55,3 +55,11 @@ print_done:
 absoluteSector  db 0x00
 absoluteHead    db 0x00
 absoluteTrack   db 0x00
+
+cluster_lba:
+    sub ax, 0x0002
+    xor cx, cx
+    mov cl, BYTE [bpbSectorsPerCluster]
+    mul cx
+    add ax, word [datasector]
+    ret
