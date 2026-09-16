@@ -1,50 +1,57 @@
-;   AEROX  |   COPYRIGHT AEROX PROJECT 2026  ;
+; ==================================================================
+;                           AeroX Bootloader
+;   Loads the kernel (kernel.bin for now) to be executed.
+;   Uses the FAT12 file system.
+;   Subject to change!
+; ==================================================================
+;
 ;   Change history:
 ;   ---------------
+;   Riley, 17-09-2026:
+;       First major bootloader rewrite
+;
 ;   Riley, 16-09-2026:
 ;       Created boot.asm, completed _start function.
 ;       Only 16 bit at the moment, looking at how to implement more stuff in the future.
 ;       Committed to GitHub repo (commit #1)
+;
 
-org 0x7C00
-bits 16
+[BITS 16]
+[ORG 0x0000]
+[CPU 386]
 
-global _start
+start: jmp main
 
-_start:
-    call clear      ;   clear the screen before anything happens
-    xor ax, ax      ;   exclusive or'ing a register again itself causes it to reset
-    mov ds, ax      ;   then we copy that empty register to all the other ones...
-    mov es, ax      ;   syntax: mov [destination, source]
-    mov ss, ax
-    mov sp, 0x7C00  ;   sets up a basic stack
+bpbOEM                  DB "AeroX"
+bpbBytesPerSector       DW 512
+bpbSectorsPerCluster    DB 1
+bpbReservedSectors      DW 1
+bpbNumberofFATs         DB 2
+bpbRootEntries          DW 224
+bpbTotalSectors         DW 2880
+bpbMedia                DB 0xF0
+bpbSectorsPerFAT        DW 9
+bpbSectorsPerTrack      DW 18
+bpbHeadsPerCylinder     DW 2
+bpbHiddenSectors        DD 0
+bpbTotalSectorsBig      DD 0
+bsDriveNumber           DB 0
+bsUnused                DB 0
+bsExtBootSignature      DB 0x29
+bsSerialNumber          DD 0x00000000
+bsVolumeLabel           DB "AeroX"
+bsFileSystem            DB "FAT12"
 
-    mov si, boot_msg
-    call print_string    
-
-    jmp $           ;   on fail jump to self/hang
-
-print_string:
-    mov ah, 0xE
-.print_loop:
-    lodsb           ;   load byte from DS:SI into AL
-    cmp al, 0       ;   check null terminator for end of the string
-    je .done
-    int 0x10        ;   bios video interrupt
-    jmp .print_loop ;   loads next character
-.done:
+print:
+    lodsb
+    or al, al
+    jz print_done
+    mov ah, 0eh
+    int 10h
+    jmp print
+print_done:
     ret
 
-clear:
-    pusha
-    mov ah, 0x00
-    mov al, 0x03
-    int 0x10
-    popa
-
-    ret
-
-boot_msg: db 13, 10, "Working", 0
-
-times 510-($-$$) db 0
-dw 0xAA55
+absoluteSector  db 0x00
+absoluteHead    db 0x00
+absoluteTrack   db 0x00
