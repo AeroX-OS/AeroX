@@ -1,5 +1,6 @@
-*.bin
-*.iso
-*.img
-*.dll
-*.vscode
+.bin
+.iso
+.img
+.dll
+.vscode
+boot.bin
