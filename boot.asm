@@ -8,6 +8,7 @@
 ;   Change history:
 ;   ---------------
 ;   Riley, 18-09-2026:
+;       Stack grows downwards from 0x7C00. It boots!
 ;       Worked on load_root function
 ;   
 ;   Riley, 17-09-2026:
@@ -20,7 +21,7 @@
 ;
 
 [BITS 16]
-[ORG 0x0000]
+[ORG 0x7C00]
 [CPU 386]
 
 start: jmp main
@@ -132,12 +133,18 @@ load_root:
     div WORD [bpbBytesPerSector]
     xchg ax, cx                         ;   exchanges the contents of the destination, AX (0x0020), with the source, CX, 0)
     mov al, BYTE [bpbNumberofFATs]
-    mul WORD [bpbNumberofFATs]
+    mul WORD [bpbSectorsPerFAT]
     add ax, WORD [bpbReservedSectors]
     mov WORD [datasector], ax
     add WORD [datasector], cx
     mov bx, 0x0200
     call read_sectors
+
+    mov cx, WORD [bpbRootEntries]
+    mov di, 0x0200
+
+;.loop:
+    ; push cx
 
 main:
     cli
@@ -145,7 +152,7 @@ main:
     mov es, ax
     mov ax, 0x0000
     mov ss, ax
-    mov sp, 0xFFFF
+    mov sp, 0x7C00
     sti
     mov si, msg_loading
     call print
@@ -157,9 +164,9 @@ failure:
 datasector dw 0x0000
 cluster dw 0x0000
 
-msg_loading db 0x0D, 0x0A, "Perchance, but of course", 0x0D, 0x0A, 0x00
+msg_loading db 0x0D, 0x0A, "Loading ", 0x0D, 0x0A, 0x00
 msg_progress db ".", 0x00
-msg_failure db 0x0D, 0x0A, "Kernel not found", 0x0D, 0x0A, 0x00
+msg_failure db 0x0D, 0x0A, "An error has occured and AeroX failed to boot correctly. Please restart your computer. If this issue persists, please check your hardware.", 0x0D, 0x0A, 0x00
 
 TIMES 510-($-$$) DB 0
 DW 0xAA55
