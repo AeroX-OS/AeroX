@@ -7,6 +7,9 @@
 ;
 ;   Change history:
 ;   ---------------
+;   Riley, 26-09-2026:
+;       Finished implementation of the 16-bit bootloader based on x16-PRos. Currently too long to build (+35 bytes)
+;
 ;   Riley, 18-09-2026:
 ;       Stack grows downwards from 0x7C00. It boots!
 ;       Worked on load_root function
@@ -143,8 +146,62 @@ load_root:
     mov cx, WORD [bpbRootEntries]
     mov di, 0x0200
 
-;.loop:
-    ; push cx
+.loop:
+    push cx
+    mov cx, 0x000B
+    mov si, image_name
+    push di
+    rep cmpsb
+    pop di
+    je load_fat
+    pop cx
+    add di, 0x0020
+    loop .loop
+    jmp failure
+
+load_fat:
+    mov dx, WORD [di + 0x001A]
+    mov WORD [cluster], dx
+    mov cx, WORD [bpbSectorsPerFAT]
+    mov ax, WORD [bpbReservedSectors]
+    mov bx, 0x0200
+    call read_sectors
+    mov ax, 0x2000
+    mov es, ax
+    mov bx, 0x0000
+    push bx
+
+load_image:
+    mov ax, WORD [cluster]
+    pop bx
+    call cluster_lba
+    xor cx, cx
+    mov cl, BYTE [bpbSectorsPerCluster]
+    call read_sectors
+    push bx
+    mov ax, WORD [cluster]
+    mov cx, ax
+    mov dx, ax
+    shr dx, 0x0001
+    add cx, dx
+    mov bx, 0x0200
+    add bx, cx
+    mov dx, WORD [bx]
+    test ax, 0x0001
+    jnz .odd_cluster
+
+.even_cluster:
+    and dx, 0000111111111111b
+    jmp .done
+
+.odd_cluster:
+    mov cl, 4
+    shr dx, cl
+
+.done:
+    mov WORD [cluster], dx
+    cmp dx, 0x0FF0
+    jb load_image
 
 main:
     cli
@@ -164,6 +221,7 @@ failure:
 datasector dw 0x0000
 cluster dw 0x0000
 
+image_name db "KERNEL   BIN"
 msg_loading db 0x0D, 0x0A, "Loading ", 0x0D, 0x0A, 0x00
 msg_progress db ".", 0x00
 msg_failure db 0x0D, 0x0A, "An error has occured and AeroX failed to boot correctly. Please restart your computer. If this issue persists, please check your hardware.", 0x0D, 0x0A, 0x00
