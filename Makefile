@@ -1,0 +1,1 @@
+all: aerox.img
