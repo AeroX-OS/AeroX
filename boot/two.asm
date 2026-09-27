@@ -7,6 +7,9 @@
 [ORG 0x7E00]
 
 main:
+    mov ax, 0x0003          ;   Another clear, get rid of the first stage output
+    int 0x10                ;   Still can use BIOS interrupts since we're in 16 bit!!!
+
     mov si, msg_real_mode
     call print16b           ;   We're still in 16-bit mode, BIOS interrupts will still work.
                             ;   When we enter 32-bit protected, we have to write to the VGA text-mode VRAM
@@ -20,27 +23,23 @@ main:
     or eax, 1
     mov cr0, eax
 
-    jmp 0x08:init_pm        ;   0x08 is the offset of the 32-bit code descriptor in the GDT
-
-print16b:
-    lodsb
-
+    jmp dword 0x08:init_pm  ;   0x08 is the offset of the 32-bit code descriptor in the GDT
 
 .halt:
     hlt
     jmp .halt
 
-print:
+print16b:
     lodsb
     or al, al
     jz .done
     mov ah, 0x0E
     int 0x10
-    jmp print
+    jmp print16b
 .done:
     ret
 
-msg_real_mode db 0x0D, 0x0A, "Entering 32-bit protected mode "
+msg_real_mode db 0x0D, 0x0A, "Entering 32-bit protected mode ", 0
 
 ; ==================================================================
 ;               FROM HERE ON 32-BIT PROTECTED MODE
@@ -58,6 +57,8 @@ init_pm:
     mov gs, ax
 
     mov esp, 0x90000    ;   Secure stack pointer
+
+    call clear_screen
 
     ;   As I mentioned before (line 10), printing to the screen works a little different in 32-bit mode.
     ;   We can't use BIOS interrupts like in 16-bit mode, so instead we have to write each character to VGA memory directly.
@@ -82,3 +83,23 @@ init_pm:
     cli
     hlt
     jmp .hang
+
+clear_screen:
+    push edi
+    push ecx
+    push eax
+
+    mov edi, 0xB8000
+    mov ecx, 2000       ;   80 x 25
+    mov ax, 0x0720      ;   Space character
+                        ;   This is light gray on black
+    rep stosw
+
+    pop eax
+    pop ecx
+    pop edi
+    ret
+
+msg_prot_mode db "Now running in 32-bit protected mode ", 0
+
+%include "boot/gdt.asm"

@@ -9,6 +9,9 @@
 [CPU 386]
 
 start:
+    mov ax, 0x0003          ; Screen clear... I totally didn't forget to add this for a full week..
+    int 0x10
+
     xor ax, ax              ;   XOR on self is clear, remember that!
     mov ds, ax              ;   [command] [target], [source]. It's backwards. Copies 0 to DS
     mov es, ax
@@ -16,11 +19,16 @@ start:
     mov sp, 0x7C00          ;   A stack is where all the data needed by the CPU is essentially "piled" up.
                             ;   Setting the stack pointer (SP) to 0x7C00 means that the TOP of the SP is 0x7C00.
                             ;   This allows the stack to use all the space below this location in memory freely.
-
+    
     mov [boot_drive], dl    ;   BIOS passes the boot drive number in DL. Save it for later use.
 
     mov si, msg_loading     ;   SI = Source Index. This register is "useful for stepping through strings or arrays," - Wikipedia
     call print
+
+    mov ah, 0x00
+    mov dl, [boot_drive]
+    int 0x13
+    jc disk_error
 
     mov ah, 0x02            ;   Now we're going to read the second stage of the bootloader from the disk into memory.
                             ;   Reads the sectors.
