@@ -32,7 +32,7 @@ start:
 
     mov ah, 0x02            ;   Now we're going to read the second stage of the bootloader from the disk into memory.
                             ;   Reads the sectors.
-    mov al, 4               ;   The number of sectors to be read.
+    mov al, 4               ;   number of sectors
     mov ch, 0               ;   Cylinder 0
     mov cl, 2               ;   Sector 2
                             ;   Sector 1 is the boot sector, sector 2 contains the second stage of the bootloader

@@ -23,7 +23,7 @@ main:
     or eax, 1
     mov cr0, eax
 
-    jmp dword 0x08:init_pm  ;   0x08 is the offset of the 32-bit code descriptor in the GDT
+    jmp 0x08:0x8000  ;   0x08 is the offset of the 32-bit code descriptor in the GDT
 
 .halt:
     hlt
@@ -48,15 +48,15 @@ msg_real_mode db 0x0D, 0x0A, "Entering 32-bit protected mode ", 0
 [BITS 32]
 
 init_pm:
-    mov ax, 0x10        ;   Set up 32-bit segment registers
-                        ;   Our data descriptor is at index 0x10...
-    mov ds, ax          ;   ...so we copy ax to all the registers we need
+    mov ax, 0x10            ;   Set up 32-bit segment registers
+                            ;   Our data descriptor is at index 0x10...
+    mov ds, ax              ;   ...so we copy ax to all the registers we need
     mov ss, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
 
-    mov esp, 0x90000    ;   Secure stack pointer
+    mov esp, 0x90000        ;   Secure stack pointer
 
     call clear_screen
 
@@ -72,11 +72,12 @@ init_pm:
                             ;   This is Light Green (0x0) on Black (0xA)
     
 .print:
-    lodsb           ;   Load next character from string into AL
-    or al, al       ;   Check if there's anything left in the string...
-    jz .hang        ;   ...and if not, go to hang because we reached the end of the string
-    mov [edi], ax   ;   Write next character + attribute to the buffer
-    add edi, 2      ;   Next character cell
+    lodsb                   ;   Load next character from string into AL
+    or al, al               ;   Check if there's anything left in the string...
+    jz .hang                ;   ...and if not, go to hang because we reached the end of the string
+    mov [edi], ax           ;   Write next character + attribute to the buffer
+    add edi, 2              ;   Next character cell
+    call update_cursor
     jmp .print
 
 .hang:
@@ -90,14 +91,46 @@ clear_screen:
     push eax
 
     mov edi, 0xB8000
-    mov ecx, 2000       ;   80 x 25
-    mov ax, 0x0720      ;   Space character
-                        ;   This is light gray on black
+    mov ecx, 2000           ;   80 x 25
+    mov ax, 0x0720          ;   Space character
+                            ;   This is light gray on black
     rep stosw
 
     pop eax
     pop ecx
     pop edi
+    ret
+
+update_cursor:
+    push eax
+    push edx
+    push ebx
+
+    ;   Calculate character index
+    mov eax, edi
+    sub eax, 0xB8000
+    shr eax, 1          
+    mov ebx, eax        ;   Save position in EBX
+
+    ;   Send high cursor byte
+    mov dx, 0x3D4
+    mov al, 0x0E
+    out dx, al
+    mov dx, 0x3D5
+    mov al, bh
+    out dx, al
+
+    ;   Send low cursor byte
+    mov dx, 0x3D4
+    mov al, 0x0F
+    out dx, al
+    mov dx, 0x3D5
+    mov al, bl
+    out dx, al
+
+    pop ebx
+    pop edx
+    pop eax
     ret
 
 msg_prot_mode db "Now running in 32-bit protected mode ", 0
